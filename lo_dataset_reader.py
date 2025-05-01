@@ -18,6 +18,83 @@ from lo.sdk.api.acquisition.io.open import open as sdk_open
 from lo.sdk.api.acquisition.io.wrappers.lofmt import LOFmtIO
 
 
+def reflectance_to_radiance(
+    reflectance: np.ndarray,
+    black_spectrum=None,
+    white_spectrum=None,
+):
+    """
+    Converts reflectance to radiance using provided white/black spectrum or auto-estimation.
+
+    Args:
+        radiance (np.ndarray): spectral list (N x C)
+        black_spectrum (np.ndarray, optional): black reference spectrum
+        white_spectrum (np.ndarray, optional): white reference spectrum
+
+    Returns:
+        radiance (np.ndarray): spectral list (N x C)
+    """
+    if white_spectrum is None or black_spectrum is None:
+        raise ValueError("Both white_spectrum and black_spectrum must be provided.")
+
+    radiance = reflectance * (white_spectrum - black_spectrum) + black_spectrum
+
+    return radiance
+
+
+def radiance_to_reflectance(
+    radiance: np.ndarray,
+    black_spectrum: np.ndarray = None,
+    white_spectrum: np.ndarray = None,
+    q: float = 95.0,
+):
+    """
+    Converts radiance to reflectance using provided white/black spectrum or auto-estimation.
+
+    Args:
+        radiance_spectral_list (np.ndarray): spectral list (N x C)
+        black_spectrum (np.ndarray, optional): black reference spectrum
+        white_spectrum (np.ndarray, optional): white reference spectrum
+        q (float, optional): Percentile for auto white estimation if not provided.
+
+    Returns:
+        reflectance (np.ndarray): spectral list (N x C)
+    """
+    if white_spectrum is None:
+        white_spectrum = get_illuminant(radiance, q)
+    if black_spectrum is None:
+        black_spectrum = np.zeros_like(white_spectrum)
+
+    reflectance = (radiance - black_spectrum) / (white_spectrum - black_spectrum)
+
+    return reflectance
+
+
+def get_illuminant(
+    radiance: np.ndarray,
+    q: float = 95.0,
+):
+    """
+    Does automatic reflectance conversion on a list of spectra by using the specified
+    method to select the white reference spectra.
+
+    Args:
+        radiance_spectral_list (xp.ndarray): spectral list (N x C)
+        q (int, optional): Percentile of brightest pixels to average over as the
+            white reference spectrum for the percentile method. Defaults to 95.
+
+    Returns:
+        white_spectrum (xp.ndarray): the estimated illuminant
+    """
+
+    sumi = np.sum(radiance, axis=1)
+    percentile = np.percentile(sumi, q=q)
+    mask = sumi > percentile
+    white_spectrum = np.mean(radiance[mask], axis=0)
+
+    return white_spectrum
+
+
 def rle_to_mask(mask_rle: str, shape: Tuple[int, int] = (2048, 2432), label: int = 1):
     """
     Convert an RLE string to a mask array.
@@ -60,7 +137,12 @@ def spectral_coordinate_indices_in_mask(mask: np.ndarray, sampling_coordinates: 
 
 class DatasetProcessor:
     def __init__(
-        self, dataset_path: str, display_fig: bool = False, save_fig: bool = True, fig_path: str = "visualisations"
+        self,
+        dataset_path: str,
+        display_fig: bool = False,
+        save_fig: bool = True,
+        fig_path: str = "visualisations",
+        unit_conversion: bool = False,
     ):
         """
         Initialize the dataset processor.
@@ -75,12 +157,14 @@ class DatasetProcessor:
         self.display_fig = display_fig
         self.save_fig = save_fig
         self.fig_path = fig_path
+        self.unit_conversion = unit_conversion
 
         self.dataset = DatasetReader(
             dataset_path=self.dataset_path,
             display_fig=self.display_fig,
             save_fig=self.save_fig,
             fig_path=self.fig_path,
+            unit_conversion=self.unit_conversion,
         )
         self.library_spectra = self.dataset.library_spectra
 
@@ -115,9 +199,13 @@ class DatasetProcessor:
         """Main method to process the entire dataset"""
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
-        for idx, ((info, scene, spectra, images_extern), annotations, library_spectra, labels) in enumerate(
-            self.dataset
-        ):
+        for idx, (
+            (info, scene, spectra, images_extern),
+            converted_spectra,
+            annotations,
+            library_spectra,
+            labels,
+        ) in enumerate(self.dataset):
             self._process_frame(scene, images_extern, annotations, labels, idx)
 
         self.summarize_spectra()
@@ -206,6 +294,7 @@ class DatasetReader:
         display_fig: bool = False,
         save_fig: bool = True,
         fig_path: str = "visualisations",
+        unit_conversion: bool = False,
     ):
         """
         Initialize the dataset reader.
@@ -230,6 +319,7 @@ class DatasetReader:
         self.display_fig = display_fig
         self.save_fig = save_fig
         self.fig_path = fig_path
+        self.unit_conversion = unit_conversion
 
         if self.save_fig:
             os.makedirs(self.fig_path, exist_ok=True)
@@ -255,11 +345,32 @@ class DatasetReader:
         """Iterate over the dataset yielding (scene, spectra, metadata), annotations, labels"""
         for frame in self.frames:
             file_path = os.path.join(self.data_path, frame["file_name"])
+            b_v = None  # black_spectrum_value
+            w_v = None  # white_spectrum_value
+            converted_spectra = None  # if unit_conversion
 
             try:
                 info, scene, spectra = self._read_lo_frame(str(file_path))
+
+                if self.unit_conversion:
+                    for k, v in frame["extern"].items():
+                        unit = v["units"]
+                        if v["id"] == frame["image_extern"]["black_spectrum_id"]:
+                            b_v = v["values"]
+                        elif v["id"] == frame["image_extern"]["white_spectrum_id"]:
+                            w_v = v["values"]
+                    if unit == "radaiance":
+                        converted_spectra = radiance_to_reflectance(
+                            radiance=spectra, black_spectrum=b_v, white_spectrum=w_v
+                        )
+                    if unit == "reflectance":
+                        converted_spectra = reflectance_to_radiance(
+                            reflectance=spectra, black_spectrum=b_v, white_spectrum=w_v
+                        )
+
                 yield (
                     (info, scene, spectra, frame.get("metadata", frame.get("image_extern", {}))),
+                    converted_spectra,
                     frame["annotations"],
                     frame["extern"],
                     [a.get("category", a.get("category_name", "unknown")) for a in frame["annotations"]],
@@ -391,6 +502,7 @@ class DatasetReader:
         if self.json_data.get("extern", {}).get("spectra", {}):
             for spectrum in self.json_data["extern"]["spectra"]:
                 library[spectrum["field"]] = {
+                    "id": spectrum["id"],
                     "source_format": spectrum["source_format"],
                     "target": spectrum["field"],
                     "units": spectrum["units"],
@@ -504,6 +616,7 @@ def main():
         default=default_figures_path,
         help="Path to save figures",
     )
+    parser.add_argument("--unit-conversion", action="store_true", default=False, help="Perform unit conversion")
     args = parser.parse_args()
 
     if args.figures_path == default_figures_path:
@@ -513,7 +626,11 @@ def main():
         args.figures_path = os.path.join(parent, f"{name}_visualisations")
 
     processor = DatasetProcessor(
-        dataset_path=args.path, fig_path=args.figures_path, display_fig=args.display_figures, save_fig=args.save_figures
+        dataset_path=args.path,
+        fig_path=args.figures_path,
+        display_fig=args.display_figures,
+        save_fig=args.save_figures,
+        unit_conversion=args.unit_conversion,
     )
     processor.process_dataset()
 

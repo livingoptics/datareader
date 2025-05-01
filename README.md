@@ -9,7 +9,7 @@ These examples use the [Living Optics SDK](https://cloud.livingoptics.com/shared
 
 ## Getting Started
 
-- New to Living Optics? [Sign up here](https://cloud.livingoptics.com/register) for a free Basic cloud tier account.
+- New to Living Optics? [Sign up here](https://cloud.livingoptics.com/register) for a basic cloud tier account.
 - Download the [Living Optics SDK](https://cloud.livingoptics.com/shared-resources?file=software). For SDK installation help, please refer to the [installation guide](https://cloud.livingoptics.com/shared-resources?file=docs/ebooks/install-sdk.pdf).
 - Download the [hyperspectral dataset](https://cloud.livingoptics.com/shared-resources?file=annotated-datasets) for training and testing models.
 

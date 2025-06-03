@@ -91,7 +91,7 @@ os.environ["QT_QPA_PLATFORM"] = "xcb"
 dataset_path = "/path/to/dataset.zip"
 dataset = DatasetReader(dataset_path, display_fig=True)
 
-for idx, ((info, scene, spectra, images_extern), annotations, library_spectra, labels) in enumerate(dataset):
+for idx, ((info, scene, spectra, images_extern), converted_spectra, annotations, library_spectra, labels) in enumerate(dataset):
     for ann_idx, annotation in enumerate(annotations):
         annotation["labels"] = labels
 

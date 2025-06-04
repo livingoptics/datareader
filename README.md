@@ -23,8 +23,8 @@ These examples use the [Living Optics SDK](https://cloud.livingoptics.com/shared
 
 |      Name      | Purpose                                                                                                                      |                                     Full Description                                      | Download                                                                                                                                    |
 |:--------------:|:-----------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------|
-| Grapes Dataset | Non-contact sugar estimation from hyperspectral data. Containing sugar levels, measured as total Brix and grape annotations. | [View on Hugging Face](https://huggingface.co/datasets/LivingOptics/hyperspectral-grapes) | [![cloud download](./media/grapes_dataset.png)](https://cloud.livingoptics.com/shared-resources?file=annotated-datasets/Grapes-Dataset.zip) |
-| Field Crop Classificaiton Dataset | This classification dataset contains images of beet plants labeled by viral infection type, featuring some class imbalance and partial annotations of reference illuminants. | [View on Hugging Face](https://huggingface.co/datasets/LivingOptics/hyperspectral-plant-virus) | [![cloud download](./media/field_crop_dataset.png)](https://cloud.livingoptics.com/shared-resources?file=annotated-datasets/Field-Crop-Classification-Dataset.zip) |
+| Grapes Dataset | Non-contact sugar estimation from hyperspectral data. Containing sugar levels, measured as total Brix and grape annotations. | [View on Hugging Face](https://huggingface.co/datasets/LivingOptics/hyperspectral-grapes) | [![cloud download](./media/grapes_dataset.png)](https://cloud.livingoptics.com/shared-resources?file=data/annotated-datasets/Grapes-Dataset.zip) |
+| Field Crop Classificaiton Dataset | This classification dataset contains images of beet plants labeled by viral infection type, featuring some class imbalance and partial annotations of reference illuminants. | [View on Hugging Face](https://huggingface.co/datasets/LivingOptics/hyperspectral-plant-virus) | [![cloud download](./media/field_crop_dataset.png)](https://cloud.livingoptics.com/shared-resources?file=data/annotated-datasets/Field-Crop-Classification-Dataset.zip) |
 
 The aim of these examples is to show developers how to work with the exported dataset format produced by the data exploration tool.
 
@@ -73,7 +73,7 @@ python lo_dataset_reader.py --path /path/to/your/dataset.zip --display-figures
 - `{dataset_name}_visualisations/annotations/grape_frame_0.png` : Annotation bounding box + segmentation
 - `{dataset_name}_visualisations/target_spectrum/target_spectrum_tray-tray2.png` : Spectrum plot for the white/black spectrum
 
-📦 Datasets for download: [here](https://cloud.livingoptics.com/shared-resources?file=annotated-datasets).
+📦 Datasets for download: [here](https://cloud.livingoptics.com/shared-resources?file=data/annotated-datasets).
 
 ---
 
